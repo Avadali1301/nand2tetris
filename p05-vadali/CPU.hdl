@@ -1,0 +1,95 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/CPU.hdl
+
+/**
+ * The Hack CPU (Central Processing unit), consisting of an ALU,
+ * two registers named A and D, and a program counter named PC.
+ * The CPU is designed to fetch and execute instructions written in
+ * the Hack machine language. In particular, functions as follows:
+ * Executes the inputted instruction according to the Hack machine
+ * language specification. The D and A in the language specification
+ * refer to CPU-resident registers, while M refers to the external
+ * memory location addressed by A, i.e. to Memory[A]. The inM input
+ * holds the value of this location. If the current instruction needs
+ * to write a value to M, the value is placed in outM, the address
+ * of the target location is placed in the addressM output, and the
+ * writeM control bit is asserted. (When writeM==0, any value may
+ * appear in outM). The outM and writeM outputs are combinational:
+ * they are affected instantaneously by the execution of the current
+ * instruction. The addressM and pc outputs are clocked: although they
+ * are affected by the execution of the current instruction, they commit
+ * to their new values only in the next time step. If reset==1 then the
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather
+ * than to the address resulting from executing the current instruction.
+ */
+
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M?
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    PARTS:
+    // Put your code here:
+      Mux16(a = instruction, b = ALUout, sel = instruction[15], out = amuxout);
+      Not(in = instruction[15], out = nota);
+    // If we are using a-instructions or our d1 is equal to 1, we know that we are going to be accessing the A-Register
+      Or(a = nota, b = instruction[5], out = ora);
+    // I knew that the ARegister's output went to addressM, and the first 15 bits of the output give the address of M
+      ARegister(in = amuxout, load = ora, out = areg, out[0..14] = addressM);
+
+    // The 13th bit decides whether to use the M input or the A-register input.
+    // I 'And' it with the last bit because that bit determines what type of instruction I am using
+      And(a=instruction[15],b=instruction[12],out=aom);
+      Mux16(a = areg, b = inM, sel = aom, out = AaM);
+
+    // I am doing the computation with the ALU using my dreg value and the value that I got after I decide which input to use
+      ALU(x = dreg, y = AaM, zx = instruction[11], nx = instruction[10], zy = instruction[9], ny = instruction[8], f = instruction[7], no = instruction[6], out = outM, out = ALUout, zr = zr, ng = ng);
+    // The last bit decides what kind of instruction I am using, and the 5th bit tells me if I am using D, so I must 'And' them together
+
+      And(a = instruction[15],b = instruction[4],out = dsel);
+      DRegister(in = ALUout, load = dsel, out = dreg);
+
+    // The last bit decides what kind of instruction I am performing, and the fourth bit controls whether or not I access M, so I must 'AND' them together. This output tells me if I write to M.
+
+    And(a = instruction[3], b = instruction[15], out = writeM);
+
+
+// JUMP SECTION
+    Not(in = ng, out = nonneg);
+    Not(in = zr, out = notzr);
+  // The last bit decides what kind of instruction I am performing, and the first bit decides whether or not jgt is true, so I must 'AND' them together.
+    And(a = instruction[15], b = instruction[0], out = jgt);
+  // In the set of Real Numbers, if the number is nonnegative and nonzero, it must be positive
+    And(a = nonneg, b = notzr, out = positive);
+  // If the number is positive, then it is greater than zero, meaning that I should jump
+    And(a = positive, b = jgt, out = jumpgreater);
+
+  // The second bit determines if I should jump if equal to
+    And(a = instruction[15], b = instruction[1], out = jeq);
+  // If the number is equal to zero, I must jump
+	  And(a = zr, b = jeq, out=jumpequal);
+
+  // The third bit determines if I should jump if less than
+    And(a = instruction[15], b = instruction[2], out = jlt);
+  // If the number is less than zero, I must jump
+    And(a = ng, b = jlt, out = jumpless);
+
+  // I now just check if any of my jump conditions are true, and if they are, I know that I have to jump
+    Or(a = jumpgreater, b = jumpequal, out = jump1);
+    Or(a = jump1, b = jumpless, out = dijump);
+
+  // My pc input is the value out of my A register, by setting my input equal to areg, I declare that if my jump is true, my output is areg, thus I skip to A.
+  // Otherwise, I just increment and go to the next line.
+    PC(in = areg, load = dijump, inc = true, reset = reset, out[0..14] = pc);
+
+}

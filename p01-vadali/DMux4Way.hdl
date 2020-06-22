@@ -1,0 +1,31 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/01/DMux4Way.hdl
+
+/**
+ * 4-way demultiplexor:
+ * {a, b, c, d} = {in, 0, 0, 0} if sel == 00
+ *                {0, in, 0, 0} if sel == 01
+ *                {0, 0, in, 0} if sel == 10
+ *                {0, 0, 0, in} if sel == 11
+ */
+
+CHIP DMux4Way {
+    IN in, sel[2];
+    OUT a, b, c, d;
+
+    PARTS:
+    // Put your code here:
+	// I take it bit-by-bit, so I use DMux on my in and sel[1], the second bit
+	DMux(in = in, sel = sel[1], a = e, b = f);
+	// I see that for any output, there will be one 'in' and three 'zeroes'. This means that only one DMux can take in = in, and the other must take in = 0.
+	// I saw that which Dmux takes which input depends on the second bit, so I just took DMux of that. I knew that I would use the first bit for my other two DMux's, because I had already done 
+	// Mux and it follows a similar format.
+	// I saw that anytime the second bit is a 1, the first two outputs are 0, and anytime the second bit is 0, the last two outputs are 1
+	// And when I do DMux with a sel = 0, the second output is 0, and when I do DMux with a sel = 1 the first output is equal to 0
+	// This means that I can take the DMux of the first and second output of my first DMux and use a second DMux on them with the first sel bit (this will determine where the 'in' falls) within 
+	// one pair.
+	DMux(in = e, sel = sel[0], a = a, b = b);
+	DMux(in = f, sel = sel[0], a = c, b = d);
+}

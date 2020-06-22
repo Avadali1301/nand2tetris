@@ -1,0 +1,28 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/01/Mux4Way16.hdl
+
+/**
+ * 4-way 16-bit multiplexor:
+ * out = a if sel == 00
+ *       b if sel == 01
+ *       c if sel == 10
+ *       d if sel == 11
+ */
+
+CHIP Mux4Way16 {
+    IN a[16], b[16], c[16], d[16], sel[2];
+    OUT out[16];
+
+    PARTS:
+    // Put your code here:
+	// bits are numbered from right to left, so sel = 01, sel[0] = 1 and sel[1] = 0
+	// I'm using Mux16 because I am being given 16-bit inputs
+	// for a and b only sel[0] matters (only bit that is changing)
+	// for c and d only sel[0] matters (inly bit that is changing)
+	Mux16(a = a, b = b, sel = sel[0], out = e);
+	Mux16(a = c, b = d, sel = sel[0], out = f);
+	// after I have compared sel[0] and gotten a or b, and c or d, I need to then compare the first bit of sel to see which one of the two output (e & f) will be chosen
+	Mux16(a = e, b = f, sel = sel[1], out = out);
+}
